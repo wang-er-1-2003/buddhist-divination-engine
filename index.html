@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>佛教占卜引擎</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0f3460; border-radius: 5px; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #b8860b, #8b6914); border-radius: 5px; border: 2px solid #0f3460; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #ffd700, #b8860b); }
+body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #1a1a2e; color: #e0d8c8; height: 100vh; display: flex; flex-direction: column; }
+.tabbar { background: #16213e; padding: 10px 20px; display: flex; gap: 8px; border-bottom: 2px solid #0f3460; }
+.tabbar button { background: transparent; border: 1px solid #0f3460; color: #aaa; padding: 8px 18px; cursor: pointer; border-radius: 6px 6px 0 0; font-size: 14px; }
+.tabbar button.active { background: #0f3460; color: #ffd700; border-bottom: 2px solid #ffd700; }
+.tabbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+.main { flex: 1; display: flex; overflow: hidden; }
+.left { width: 440px; background: #16213e; padding: 20px; overflow-y: auto; border-right: 1px solid #0f3460; }
+.right { flex: 1; padding: 30px; overflow-y: auto; }
+.panel { display: none; }
+.panel.active { display: block; }
+select, button.bigbtn { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #0f3460; background: #0f3460; color: #e0d8c8; font-size: 14px; }
+button.bigbtn { background: linear-gradient(135deg, #b8860b, #ffd700); color: #1a1a2e; font-weight: bold; font-size: 16px; cursor: pointer; }
+button.bigbtn:hover { filter: brightness(1.1); }
+button.bigbtn:disabled { opacity: 0.5; }
+h2 { color: #ffd700; margin-bottom: 15px; font-size: 20px; }
+h3 { color: #b8860b; margin: 12px 0 6px; font-size: 16px; }
+.qian-result { background: #16213e; border: 1px solid #b8860b; border-radius: 8px; padding: 25px; margin-top: 15px; }
+.qian-no { color: #ffd700; font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+.qian-ji { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 14px; margin: 0 8px 8px 0; }
+.ji-大吉, .ji-吉, .ji-上上, .ji-上吉, .ji-上签, .ji-吉祥, .ji-中吉, .ji-平安, .ji-大吉之卦 { background: #2d5a27; color: #90ee90; }
+.ji-中, .ji-中平, .ji-中签, .ji-中上, .ji-中, .ji-中吉, .ji-中平之卦, .ji-中，趋吉, .ji-中, .ji-中等 { background: #5a4a27; color: #ffd700; }
+.ji-凶, .ji-下, .ji-下下, .ji-下签, .ji-下卦, .ji-略凶, .ji-凶数运, .ji-大凶, .ji-下下之卦, .ji-下下 { background: #5a2727; color: #ff9999; }
+.qian-poem { font-size: 18px; line-height: 2; margin: 15px 0; padding: 15px; background: #0f3460; border-radius: 6px; }
+.qian-meta { color: #aaa; font-size: 13px; margin: 4px 0; }
+.qian-detail { margin-top: 12px; line-height: 1.8; font-size: 14px; }
+.qian-detail b { color: #b8860b; }
+/* 摇签动画 */
+.shaker { text-align: center; padding: 40px 0; }
+.qiantong { font-size: 80px; display: inline-block; transition: transform 0.1s; }
+.shaking .qiantong { animation: shake 0.1s infinite; }
+@keyframes shake {
+  0% { transform: rotate(-5deg) translateY(0); }
+  50% { transform: rotate(5deg) translateY(-10px); }
+  100% { transform: rotate(-5deg) translateY(0); }
+}
+.placeholder { color: #666; text-align: center; padding: 80px 20px; font-size: 15px; line-height: 2; }
+.tags { font-size: 12px; color: #888; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="tabbar">
+  <button data-tab="lingqian" class="active">汉传灵签</button>
+  <button data-tab="guanyin32">观音32课</button>
+  <button data-tab="dizanglun">地藏木轮</button>
+  <button data-tab="zangchuan">藏传骰子</button>
+  <button data-tab="xiaofa">小法指南</button>
+</div>
+<div class="main">
+  <div class="left">
+    <!-- Tab1 灵签 -->
+    <div id="panel-lingqian" class="panel active">
+      <h2>汉传灵签</h2>
+      <label style="font-size:13px;color:#aaa">选择签本</label>
+      <select id="qianben">
+        <option value="guanyin100">观音灵签 100 签（天竺寺）</option>
+        <option value="liushijiazi">六十甲子签 63 签（妈祖天公）</option>
+        <option value="dizang60">地藏王殿 60 签（荃湾）</option>
+        <option value="fuzu51">佛祖灵签 50 签（玄武山）</option>
+      </select>
+      <div class="shaker">
+        <div class="qiantong" id="qiantong">🎋</div>
+      </div>
+      <button class="bigbtn" id="btnDraw">摇签</button>
+      <div style="margin: 15px 0; padding-top: 15px; border-top: 1px dashed #0f3460;">
+        <label style="font-size:13px;color:#aaa">或手动指定签号直查</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input type="number" id="inputNo" min="1" max="100" placeholder="签号" style="flex:1;padding:8px;border-radius:6px;border:1px solid #0f3460;background:#0f3460;color:#e0d8c8;font-size:14px">
+          <button id="btnLookup" style="padding:8px 14px;border-radius:6px;border:1px solid #b8860b;background:transparent;color:#b8860b;cursor:pointer">直查</button>
+        </div>
+      </div>
+      <div class="tags">提示：心诚则灵，先默念所问之事再摇。</div>
+      <div style="margin-top:15px;padding:12px;background:#0f3460;border-radius:6px;font-size:12px;color:#9ab;line-height:1.7">
+        <b style="color:#ffd700">这个法解决什么：</b><br>
+        日常琐事决疑——求财、婚姻、疾病、行人、官非，问一件具体事的吉凶走向。寺庙里最常用，签文带诗+解。<br><br>
+        <b style="color:#ffd700">前置要求（通行寺庙规矩）：</b><br>
+        ① 净手诚心，在菩萨像前焚香礼拜<br>
+        ② 默念所问之事，报自己名字住址<br>
+        ③ 摇出签后不可重摇，一签定案<br>
+        ④ 心不诚、戏问不灵
+      </div>
+    </div>
+
+    <!-- Tab2 观音32课 -->
+    <div id="panel-guanyin32" class="panel">
+      <h2>观音32感应灵课</h2>
+      <p style="font-size:13px;color:#aaa;line-height:1.7;margin-bottom:12px">五枚硬币分别写<b style="color:#ffd700">金木水火土</b>。掷下后，字面朝上=该元素出现，幕面=○。点选你摇到的字。</p>
+      <div id="wuxingBtns" style="display:flex;flex-direction:column;gap:8px;margin:15px 0"></div>
+      <button class="bigbtn" id="btnG32">查课</button>
+      <div style="margin: 15px 0; padding-top: 15px; border-top: 1px dashed #0f3460;">
+        <label style="font-size:13px;color:#aaa">或直接输入课号</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input type="number" id="g32No" min="1" max="32" placeholder="1-32" style="flex:1;padding:8px;border-radius:6px;border:1px solid #0f3460;background:#0f3460;color:#e0d8c8;font-size:14px">
+          <button id="btnG32Lookup" style="padding:8px 14px;border-radius:6px;border:1px solid #b8860b;background:transparent;color:#b8860b;cursor:pointer">直查</button>
+        </div>
+      </div>
+      <div class="tags">来源：明万历二十年影印本，印光大师流通。</div>
+      <div style="margin-top:15px;padding:12px;background:#0f3460;border-radius:6px;font-size:12px;color:#9ab;line-height:1.7">
+        <b style="color:#ffd700">这个法解决什么：</b><br>
+        重大疑难决疑——印光大师本人出家前就是靠这课"高明居禄位，笼禽得放生"逃回家继续修行。比灵签严肃，问"该不该做、能不能成"的方向问题。<br><br>
+        <b style="color:#ffd700">前置要求（原文）：</b><br>
+        ① 占者先净手诚心，在观音像前焚香礼拜<br>
+        ② 用硬币五枚，在香烟上熏过，心中默祷所问之事<br>
+        ③ 口念："紫金化身千百亿，白衣妙相三十二……南无大慈大悲灵感观世音菩萨摩诃萨！今有祈祷弟子某，所求某事，未决忧疑，请垂感应！愿赐证明！"<br>
+        ④ 至心念诵菩萨名号108遍或1000遍（急事可减）<br>
+        ⑤ 五钱分别写金木水火土，掷下按字面组合查课<br>
+        ⑥ 诸恶莫作，众善奉行
+      </div>
+    </div>
+
+    <!-- Tab3 地藏木轮 -->
+    <div id="panel-dizanglun" class="panel">
+      <h2>地藏占察木轮</h2>
+      <div id="lzForm"></div>
+      <button class="bigbtn" id="btnDlz">查轮相</button>
+      <div id="lzSum" style="text-align:center;color:#ffd700;margin-top:10px;font-size:18px"></div>
+      <div class="tags">1-160为果报差别，161-189为舍身已生处。</div>
+      <div style="margin-top:15px;padding:12px;background:#0f3460;border-radius:6px;font-size:12px;color:#9ab;line-height:1.7">
+        <b style="color:#ffd700">这个法解决什么：</b><br>
+        查三世业果——不是问"这件事成不成"，而是问"我现在修行到哪一步了、前世造了什么业、死后往生哪里"。189相里161-189直接告诉你舍身后生在哪一道。<br><br>
+        <b style="color:#ffd700">前置要求（原文《占察善恶业报经》）：</b><br>
+        ① 先当至心总礼十方一切诸佛，立愿"愿令一切众生速疾亲近供养正法"<br>
+        ② 次礼十方一切法藏、一切贤圣、地藏菩萨摩诃萨<br>
+        ③ 至心称念"南无地藏菩萨摩诃萨"千声<br>
+        ④ 刻木如小指许，长短减一寸，四面方平，仰手傍掷<br>
+        ⑤ 先掷第一、二轮占宿世善恶业（本引擎略过，直接用第三轮）<br>
+        ⑥ 第三轮掷三次，三数之和即轮相（1-189）<br>
+        ⑦ 若占不相应（轮相不对），须忏悔后重占
+      </div>
+    </div>
+
+    <!-- Tab4 藏传骰子 -->
+    <div id="panel-zangchuan" class="panel">
+      <h2>藏传骰子卜</h2>
+      <label style="font-size:13px;color:#aaa">选择卜法</label>
+      <select id="zangfa">
+        <option value="wenzhu">文殊占筮法 Mo 36卦（两枚骰子）</option>
+        <option value="guanyinLiu">观音明镜论 6卦（一枚骰子）</option>
+        <option value="tianmu">吉祥天母 18卦（一枚骰子）</option>
+      </select>
+      <div id="zangWrap"></div>
+      <button class="bigbtn" id="btnZang">查卦</button>
+      <div class="tags">索达吉堪布译麦彭仁波切仪轨。</div>
+      <div style="margin-top:15px;padding:12px;background:#0f3460;border-radius:6px;font-size:12px;color:#9ab;line-height:1.7">
+        <b style="color:#ffd700">这个法解决什么：</b><br>
+        修行取舍——藏地活佛大德选弘法方向、判断修法是否有魔障、查怨敌疾病根源。不是问财运婚姻，而是问"我这个修法对不对、要不要换、障碍在哪"。每卦都带具体对治方法（念什么咒、供什么、做什么佛事）。
+      </div>
+    </div>
+
+    <!-- Tab5 小法指南 -->
+    <div id="panel-xiaofa" class="panel">
+      <h2>小法指南</h2>
+      <div style="font-size:14px;line-height:2;color:#ccc">
+        <h3>掷杯筊</h3>
+        <p style="color:#aaa;font-size:13px">一阴一阳=圣筊（允）；两阴=笑筊（笑）；两阳=怒筊（禁）。三掷定案。</p>
+        <h3>念珠卜</h3>
+        <p style="color:#aaa;font-size:13px">三粒一组，数至不足六为止，1-6对应六字。</p>
+        <h3>听香</h3>
+        <p style="color:#aaa;font-size:13px">燃香后听路人第一句话，断吉凶。无固定签本。</p>
+      </div>
+      <div style="margin-top:15px;padding:12px;background:#0f3460;border-radius:6px;font-size:12px;color:#9ab;line-height:1.7">
+        <b style="color:#ffd700">这些小法解决什么：</b><br>
+        手边没签筒没骰子时的应急卜——掷杯筊问神明允不允许，念珠卜快速起一卦，听香抓第一句外应。只给是/否/缓/急，没有详细断语。<br><br>
+        <b style="color:#ffd700">前置要求：</b><br>
+        ① 掷杯筊：须在神像前，掷三次，三圣筊为准（本引擎无固定签本，仅作说明）<br>
+        ② 念珠卜：索达吉原文为"两手拇指各抓念珠一段，三粒一组同时拨向中点，最后剩余≤6粒即结果"，不能跳数<br>
+        ③ 听香：燃香后出门，第一个听到的人声即外应，不可刻意等
+      </div>
+    </div>
+  </div>
+  <div class="right" id="rightPane">
+    <div id="result" class="placeholder">
+      选择左侧签本，点「摇签」得签。<br><br>
+      本引擎收录汉传灵签 4 本：<br>
+      · 观音100签（杭州天竺寺）<br>
+      · 六十甲子签（台湾妈祖天公）<br>
+      · 地藏王殿60签（香港荃湾）<br>
+      · 佛祖51签（广东玄武山，缺第45签为源文件所缺）
+    </div>
+  </div>
+</div>
+<script src="renderer/app.js"></script>
+</body>
+</html>

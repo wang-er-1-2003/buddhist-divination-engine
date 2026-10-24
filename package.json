@@ -1,0 +1,26 @@
+{
+  "name": "fozhan-engine",
+  "version": "0.1.0",
+  "description": "佛教占卜引擎子件（汉传灵签/观音32课/地藏木轮/藏传骰子卜/菩萨占卜法）",
+  "main": "main.js",
+  "author": "wang-er-1-2003",
+  "license": "MIT",
+  "build": {
+    "appId": "com.doubao.fozhan",
+    "productName": "佛教占卜引擎",
+    "directories": { "output": "dist" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer/**/*",
+      "engine/**/*",
+      "LICENSE",
+      "package.json"
+    ],
+    "win": { "target": ["portable"] },
+    "portable": { "artifactName": "佛教占卜引擎-portable.exe" },
+    "electronVersion": "31.7.7",
+    "electronDownload": { "mirror": "https://npmmirror.com/mirrors/electron/" }
+  }
+}
